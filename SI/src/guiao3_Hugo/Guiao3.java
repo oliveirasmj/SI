@@ -93,7 +93,12 @@ public class Guiao3 {
      */
     public void decifrarFicheiro(String fileName) throws IOException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, NoSuchAlgorithmException, NoSuchPaddingException {
         Scanner sc = new Scanner(System.in);
-
+        
+        if (ALG == null) {
+        	System.out.println("Escreva o tipo de algoritmo(AES ou DES):");
+        	ALG = sc.nextLine();
+        }
+        
         //obter chave 
         System.out.println("Insira o nome do ficheiro com a chave");
         String pathKeyFile = sc.nextLine();
