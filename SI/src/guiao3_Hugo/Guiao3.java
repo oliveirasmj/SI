@@ -20,8 +20,11 @@ import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.KeySpec;
 import java.util.Base64;
 import java.util.Scanner;
 import javax.crypto.BadPaddingException;
@@ -30,6 +33,9 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 
 /**
@@ -39,7 +45,7 @@ import javax.crypto.spec.SecretKeySpec;
 public class Guiao3 {
 
     public byte[] key;
-    public Cipher cifra;
+    public Cipher cifraDES;
     public SecretKey chave = null;
     public KeyGenerator keygenerator;
     //“Algoritmo/MododeCifra/Padding"
@@ -47,87 +53,103 @@ public class Guiao3 {
     public String modeloCifra;
     public String tamanhoModelo;
     
-    Scanner sc = new Scanner(System.in);
-    String ALG = "";
 
     public Guiao3() {
     }
 
-    public void gerarChave() throws NoSuchAlgorithmException, IOException {
-    	System.out.println("Escreva o tipo de algoritmo(AES ou DES):");
-    	ALG = sc.nextLine();
-    	
-        keygenerator = KeyGenerator.getInstance(ALG); //implementa um gerador de chaves simétricas --> DES - cifra simetrica por blocos
+    /*
+
+        // Texto puro
+        byte[] textoPuro = "Exemplo de texto puro".getBytes();
+
+        System.out.println("Texto [Formato de Byte] : " + textoPuro);
+        System.out.println("Texto Puro : " + new String(textoPuro));
+
+        // Texto encriptado
+        byte[] textoEncriptado = cifraDES.doFinal(textoPuro);
+
+        System.out.println("Texto Encriptado : " + textoEncriptado);
+
+        // Inicializa a cifra também para o processo de DESINCRIPTACAO
+        cifraDES.init(Cipher.DECRYPT_MODE, chave); //DECRYPT_MODE
+
+        // Decriptografa o texto
+        byte[] textoDecriptografado = cifraDES.doFinal(textoEncriptado);
+
+        System.out.println("Texto Decriptografado : " + new String(textoDecriptografado));   
+     */
+ 
+    
+    public void gerarChave(String alg) throws NoSuchAlgorithmException{
+        keygenerator = KeyGenerator.getInstance(alg); //implementa um gerador de chaves simétricas --> DES - cifra simetrica por blocos
         chave = keygenerator.generateKey(); //implementa uma chave simétrica
 
         key = chave.getEncoded();
 
-        System.out.println("Insira o nome do ficheiro da chave: ");
+        System.out.println("Insira o nome do ficheiro com a chave");
         writeByte(key);
     }
-  
-    public void cifrarFicheiroSelecionado(String fileName) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, IOException {
-        if (chave == null) {
-            gerarChave();
-        }
-        
-        // Cria a cifra
-        cifra = Cipher.getInstance(ALG+"/ECB/PKCS5Padding"); //Cipher - permite realizar operações de cifra e decifra
 
-        // Inicializa a cifra para o processo de ENCRIPTACAO
-        cifra.init(Cipher.ENCRYPT_MODE, chave); //ENCRYPT_MODE
-
+    public void cifrar(String fileName, String alg) throws NoSuchAlgorithmException, NoSuchPaddingException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException{
         byte[] textoPuro = lerFicheiro(fileName).toString().getBytes();
+        
+        
+        // SE ALGORITMO != DE ECB , gerar vetor e guardar em ficheiro
+        //fazer split a string do ALG, ver modo de cifra
+        //se !== de ECB entao vai gerar vetor inicial e  criar ficheiro 
 
+         if (chave == null) {
+            Scanner sc = new Scanner(System.in);
+            System.out.println("Insira o tipo de chave a gerar: AES / DES");
+            String tipoChave = sc.nextLine(); 
+            gerarChave(tipoChave);
+        }
+         
+        Cipher cipher = Cipher.getInstance(alg);
+        cipher.init(Cipher.ENCRYPT_MODE, chave);
+        
         // Texto encriptado
-        byte[] textoEncriptado = cifra.doFinal(textoPuro);
-        System.out.println("Insira o nome do ficheiro encriptado: ");
+        byte[] textoEncriptado = cipher.doFinal(textoPuro);
+        System.out.println("Insira o nome para o ficheiro ENCRIPTADO: ");
 
         writeByte(textoEncriptado);
-    }
-
-    /**
-     * Função para decifrar ficheiro celecionado utilizando a chave DES
-     *
-     * @param fileName
-     */
-    public void decifrarFicheiro(String fileName) throws IOException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, NoSuchAlgorithmException, NoSuchPaddingException {
+    } 
+  
+  
+    public void decifrar(String fileName, String alg, String tipoDeChave) throws IOException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException{
         Scanner sc = new Scanner(System.in);
         
-        if (ALG == null) {
-        	System.out.println("Escreva o tipo de algoritmo(AES ou DES):");
-        	ALG = sc.nextLine();
-        }
         
-        //obter chave 
+        //SE ALGORITMO != ECB  pedir ficheiro do vetor inicial, considerar  IvParameterSpec().
+        //fazer split a string do ALG, ver modo de cifra
+        //se !== de ECB entao vai pedir ficheiro com vetor inicial 
+        
+        //obter caminho chave 
         System.out.println("Insira o nome do ficheiro com a chave");
         String pathKeyFile = sc.nextLine();
-
-        byte[] keyFileContent = Files.readAllBytes(Paths.get(pathKeyFile + ".txt"));
-
-        cifra = Cipher.getInstance(ALG+"/ECB/PKCS5Padding");
-        SecretKeySpec chaveFromFile = new SecretKeySpec(keyFileContent, ALG);
-        //criar chave a partir de array de bytes
-
-        // Cria a cifra
-        // Inicializa a cifra também para o processo de DESINCRIPTACAO
-        cifra.init(Cipher.DECRYPT_MODE, chaveFromFile); //DECRYPT_MODE
-
-        Path path = Paths.get(fileName + ".txt");
+        
+        //obter a chave em ficheiro
+        byte[] keyFileContent = Files.readAllBytes(Paths.get(pathKeyFile ));
+        //passar bytes para key 
+        SecretKeySpec chaveFromFile = new SecretKeySpec(keyFileContent, tipoDeChave);
+        
+        Cipher cipher = Cipher.getInstance(alg);
+        cipher.init(Cipher.DECRYPT_MODE, chaveFromFile);
+        
+        Path path = Paths.get(fileName );
         byte[] textoEncriptado = Files.readAllBytes(path);
 
         // Decriptografa o texto
-        byte[] textoDecriptografado = cifra.doFinal(textoEncriptado);
+        byte[] textoDecriptografado = cipher.doFinal(textoEncriptado);
 
         escreveParaFicheiroString(new String(textoDecriptografado));
-    }
+    } 
 
     public void escreveParaFicheiroString(String textoNovamenteClaro) throws FileNotFoundException, IOException {
         Scanner sc = new Scanner(System.in);
-        //System.out.println("Texto Decriptografado : " + textoNovamenteClaro);
-        System.out.println("Escreva o nome do ficheiro para guardar o texto desencriptado: ");
-        String path = sc.nextLine() + ".txt";
-        
+        System.out.println("Escreva o nome do ficheiro novamente em claro");
+        String path = sc.nextLine() ;
+
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(path, true))) { //true - indicar que n�o � para recriar arquivo
             bw.write(textoNovamenteClaro);
 
@@ -138,7 +160,7 @@ public class Guiao3 {
     }
 
     public StringBuilder lerFicheiro(String fileName) {
-        String ficheiroTextoClaro = fileName + ".txt"; //caminho do arquivo
+        String ficheiroTextoClaro = fileName ; //caminho do arquivo
         FileReader fr = null;
         BufferedReader br = null;
         String allLines = "";
@@ -167,7 +189,7 @@ public class Guiao3 {
     // Method which write the bytes into a file 
     static void writeByte(byte[] bytes) {
         Scanner sc = new Scanner(System.in);
-        String path = sc.nextLine() + ".txt";
+        String path = sc.nextLine() ;
 
         try {
             File file = new File(path);
@@ -185,27 +207,27 @@ public class Guiao3 {
         }
     }
 
-    public byte[] getkey() {
+    public byte[] getKey() {
         return key;
     }
 
-    public void setkey(byte[] key) {
+    public void setKey(byte[] key) {
         this.key = key;
     }
 
-    public Cipher getcifra() {
-        return cifra;
+    public Cipher getCifraDES() {
+        return cifraDES;
     }
 
-    public void setcifra(Cipher cifra) {
-        this.cifra = cifra;
+    public void setCifraDES(Cipher cifraDES) {
+        this.cifraDES = cifraDES;
     }
 
-    public SecretKey getchave() {
+    public SecretKey getChave() {
         return chave;
     }
 
-    public void setchave(SecretKey chave) {
+    public void setChave(SecretKey chave) {
         this.chave = chave;
     }
 

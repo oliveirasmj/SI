@@ -34,7 +34,9 @@ public class main {
             switch (opcao) {
                 case 1: {
                     try {
-                        g.gerarChave();
+                        System.out.println("Insira o tipo de chave a gerar: AES || DES");
+                        String tipoChave = sc.nextLine(); 
+                        g.gerarChave(tipoChave);
                     } catch (NoSuchAlgorithmException ex) {
                         Logger.getLogger(main.class.getName()).log(Level.SEVERE, null, ex);
                     }
@@ -43,12 +45,18 @@ public class main {
                 case 2: {
                     System.out.println("Insira o nome do ficheiro a CIFRAR");
                     String path = sc.nextLine(); 
-                    g.cifrarFicheiroSelecionado(path);
+                    System.out.println("Insira o algoritmo/mododecifra/padding a utilizar: AES/ECB/PKCS5Padding || DES/ECB/PKCS5Padding || AES/CBC/PKCS5Padding");
+                    String alg = sc.nextLine(); 
+                    g.cifrar(path, alg);
                     break;
                 }case 3: {
-                    System.out.println("Insira o nome do ficheiro a ser DECIFRAR");
+                    System.out.println("Insira o nome do ficheiro a DECIFRAR");
                     String path = sc.nextLine(); 
-                    g.decifrarFicheiro(path);
+                    System.out.println("Insira o algoritmo/mododecifra/padding a utilizar: AES/ECB/PKCS5Padding || DES/ECB/PKCS5Padding || AES/CBC/PKCS5Padding");
+                    String alg = sc.nextLine(); 
+                    System.out.println("Insira o tipo de chave a utilizar na DECIFRA: AES || DES");
+                    String tipoChave = sc.nextLine(); 
+                    g.decifrar(path, alg,tipoChave);
                     break;
                 }
             }
@@ -58,7 +66,7 @@ public class main {
     
     public static void menu(){
         System.out.println("Selecione uma opcao");
-        System.out.println("1 - Gerar chave");
+        System.out.println("1 - Gerar chave DES");
         System.out.println("2 - CIFRAR um ficheiro");
         System.out.println("3 - DECIFRAR um ficheiro");
         System.out.println("7 - Fechar programa");
